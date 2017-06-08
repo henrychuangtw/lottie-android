@@ -1,41 +1,40 @@
 package com.airbnb.lottie;
 
 import android.graphics.PointF;
-import android.util.Log;
+import android.support.annotation.Nullable;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 class RectangleShape {
-  private static final String TAG = RectangleShape.class.getSimpleName();
-
-  private final IAnimatablePathValue position;
+  private final String name;
+  private final AnimatableValue<PointF> position;
   private final AnimatablePointValue size;
   private final AnimatableFloatValue cornerRadius;
 
-  RectangleShape(JSONObject json, int frameRate, LottieComposition composition) {
-    try {
-      JSONObject positionJson = json.getJSONObject("p");
-      position = AnimatablePathValue.createAnimatablePathOrSplitDimensionPath(positionJson, composition);
-    } catch (JSONException e) {
-      throw new IllegalArgumentException("Unable to parse rectangle position.", e);
+  private RectangleShape(String name, AnimatableValue<PointF> position,
+      AnimatablePointValue size, AnimatableFloatValue cornerRadius) {
+    this.name = name;
+    this.position = position;
+    this.size = size;
+    this.cornerRadius = cornerRadius;
+  }
+
+  static class Factory {
+    private Factory() {
     }
 
-    try {
-      JSONObject cornerRadiusJson = json.getJSONObject("r");
-      cornerRadius = new AnimatableFloatValue(cornerRadiusJson, frameRate, composition);
-    } catch (JSONException e) {
-      throw new IllegalArgumentException("Unable to parse rectangle corner radius.", e);
+    static RectangleShape newInstance(JSONObject json, LottieComposition composition) {
+      return new RectangleShape(
+          json.optString("nm"),
+          AnimatablePathValue.createAnimatablePathOrSplitDimensionPath(
+              json.optJSONObject("p"), composition),
+          AnimatablePointValue.Factory.newInstance(json.optJSONObject("s"), composition),
+          AnimatableFloatValue.Factory.newInstance(json.optJSONObject("r"), composition));
     }
+  }
 
-    try {
-      JSONObject sizeJson = json.getJSONObject("s");
-      size = new AnimatablePointValue(sizeJson, frameRate, composition);
-    } catch (JSONException e) {
-      throw new IllegalArgumentException("Unable to parse rectangle size.", e);
-    }
-
-    if (L.DBG) Log.d(TAG, "Parsed new rectangle " + toString());
+  String getName() {
+    return name;
   }
 
   AnimatableFloatValue getCornerRadius() {
@@ -46,7 +45,7 @@ class RectangleShape {
     return size;
   }
 
-  IAnimatablePathValue getPosition() {
+  AnimatableValue<PointF> getPosition() {
     return position;
   }
 

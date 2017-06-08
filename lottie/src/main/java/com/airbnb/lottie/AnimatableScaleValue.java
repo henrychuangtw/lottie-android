@@ -1,42 +1,40 @@
 package com.airbnb.lottie;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.List;
+
 class AnimatableScaleValue extends BaseAnimatableValue<ScaleXY, ScaleXY> {
-  AnimatableScaleValue(LottieComposition composition) {
-    super(composition);
-    initialValue = new ScaleXY();
+  private AnimatableScaleValue() {
+    super(new ScaleXY());
   }
 
-  AnimatableScaleValue(JSONObject scaleValues, int frameRate, LottieComposition composition,
-      boolean isDp) {
-    super(scaleValues, frameRate, composition, isDp);
-  }
-
-  @Override protected ScaleXY valueFromObject(Object object, float scale) throws JSONException {
-    JSONArray array = (JSONArray) object;
-    try {
-      if (array.length() >= 2) {
-        return new ScaleXY().scale((float) array.getDouble(0) / 100f * scale,
-            (float) array.getDouble(1) / 100f * scale);
-      }
-    } catch (JSONException e) {
-      // Do nothing.
-    }
-
-    return new ScaleXY();
+  AnimatableScaleValue(List<Keyframe<ScaleXY>> keyframes, ScaleXY initialValue) {
+    super(keyframes, initialValue);
   }
 
   @Override public KeyframeAnimation<ScaleXY> createAnimation() {
     if (!hasAnimation()) {
       return new StaticKeyframeAnimation<>(initialValue);
+    } else {
+      return new ScaleKeyframeAnimation(keyframes);
+    }
+  }
+
+  static final class Factory {
+    private Factory() {
     }
 
-    ScaleKeyframeAnimation animation =
-        new ScaleKeyframeAnimation(duration, composition, keyTimes, keyValues, interpolators);
-    animation.setStartDelay(delay);
-    return animation;
+    static AnimatableScaleValue newInstance(JSONObject json, LottieComposition
+        composition) {
+      AnimatableValueParser.Result<ScaleXY> result = AnimatableValueParser
+          .newInstance(json, 1, composition, ScaleXY.Factory.INSTANCE)
+          .parseJson();
+      return new AnimatableScaleValue(result.keyframes, result.initialValue);
+    }
+
+    static AnimatableScaleValue newInstance() {
+      return new AnimatableScaleValue();
+    }
   }
 }

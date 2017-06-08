@@ -1,48 +1,33 @@
 package com.airbnb.lottie;
 
-import android.util.Log;
+import android.support.annotation.Nullable;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 class ShapePath {
-  private static final String TAG = ShapePath.class.getSimpleName();
-
   private final String name;
   private final int index;
-  private AnimatableShapeValue shapePath;
+  private final AnimatableShapeValue shapePath;
 
-  ShapePath(JSONObject json, int frameRate, LottieComposition composition) {
-    try {
-      index = json.getInt("ind");
-    } catch (JSONException e) {
-      throw new IllegalArgumentException("ShapePath has no index.", e);
+  private ShapePath(String name, int index, AnimatableShapeValue shapePath) {
+    this.name = name;
+    this.index = index;
+    this.shapePath = shapePath;
+  }
+
+  static class Factory {
+    private Factory() {
     }
 
-    try {
-      name = json.getString("nm");
-    } catch (JSONException e) {
-      throw new IllegalArgumentException("Layer has no name.", e);
+    static ShapePath newInstance(JSONObject json, LottieComposition composition) {
+      AnimatableShapeValue animatableShapeValue =
+          AnimatableShapeValue.Factory.newInstance(json.optJSONObject("ks"), composition);
+      return new ShapePath(json.optString("nm"), json.optInt("ind"), animatableShapeValue);
     }
+  }
 
-    boolean closed = false;
-    try {
-      closed = json.getBoolean("closed");
-    } catch (JSONException e) {
-      // Do nothing. Bodymovin 4.4 moved "closed" to be "c" inside of the shape json itself.
-    }
-
-    JSONObject shape;
-    try {
-      shape = json.getJSONObject("ks");
-      shapePath = new AnimatableShapeValue(shape, frameRate, composition, closed);
-    } catch (JSONException e) {
-      // Ignore
-    }
-
-    if (L.DBG) {
-      Log.d(TAG, "Parsed new shape path " + toString());
-    }
+  public String getName() {
+    return name;
   }
 
   AnimatableShapeValue getShapePath() {

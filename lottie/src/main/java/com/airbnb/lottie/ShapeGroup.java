@@ -1,9 +1,9 @@
 package com.airbnb.lottie;
 
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -11,86 +11,76 @@ import java.util.Arrays;
 import java.util.List;
 
 class ShapeGroup {
-  @Nullable
-  static Object shapeItemWithJson(JSONObject json, int framerate, LottieComposition composition) {
-    String type = null;
-    try {
-      type = json.getString("ty");
-    } catch (JSONException e) {
-      // Do nothing.
-    }
-    if (type == null) {
-      throw new IllegalStateException("Shape has no type.");
-    }
+  @Nullable static Object shapeItemWithJson(JSONObject json, LottieComposition composition) {
+    String type = json.optString("ty");
 
     switch (type) {
       case "gr":
-        return new ShapeGroup(json, framerate, composition);
+        return ShapeGroup.Factory.newInstance(json, composition);
       case "st":
-        return new ShapeStroke(json, framerate, composition);
+        return ShapeStroke.Factory.newInstance(json, composition);
+      case "gs":
+        return GradientStroke.Factory.newInstance(json, composition);
       case "fl":
-        return new ShapeFill(json, framerate, composition);
+        return ShapeFill.Factory.newInstance(json, composition);
+      case "gf":
+        return GradientFill.Factory.newInstance(json, composition);
       case "tr":
-        return new ShapeTransform(json, framerate, composition);
+        return AnimatableTransform.Factory.newInstance(json, composition);
       case "sh":
-        return new ShapePath(json, framerate, composition);
+        return ShapePath.Factory.newInstance(json, composition);
       case "el":
-        return new CircleShape(json, framerate, composition);
+        return CircleShape.Factory.newInstance(json, composition);
       case "rc":
-        return new RectangleShape(json, framerate, composition);
+        return RectangleShape.Factory.newInstance(json, composition);
       case "tm":
-        return new ShapeTrimPath(json, framerate, composition);
+        return ShapeTrimPath.Factory.newInstance(json, composition);
+      case "sr":
+        return PolystarShape.Factory.newInstance(json, composition);
+      case "mm":
+        return MergePaths.Factory.newInstance(json);
+      default:
+        Log.w(L.TAG, "Unknown shape type " + type);
     }
     return null;
   }
 
-  private String name;
-  private final List<Object> items = new ArrayList<>();
+  private final String name;
+  private final List<Object> items;
 
-  private ShapeGroup(JSONObject json, int frameRate, LottieComposition composition) {
-    JSONArray jsonItems = null;
-    try {
-      jsonItems = json.getJSONArray("it");
-    } catch (JSONException e) {
-      // Do nothing.
-    }
-    if (jsonItems == null) {
-      // Thought this was necessary but maybe not?
-      // throw new IllegalStateException("There are no items.");
-      jsonItems = new JSONArray();
+  ShapeGroup(String name, List<Object> items) {
+    this.name = name;
+    this.items = items;
+  }
+
+  static class Factory {
+    private Factory() {
     }
 
-    try {
-      name = json.getString("nm");
-    } catch (JSONException e) {
-      // Do nothing.
-    }
+    private static ShapeGroup newInstance(JSONObject json, LottieComposition composition) {
+      JSONArray jsonItems = json.optJSONArray("it");
+      String name = json.optString("nm");
+      List<Object> items = new ArrayList<>();
 
-    for (int i = 0; i < jsonItems.length(); i++) {
-      JSONObject jsonItem = null;
-      try {
-        jsonItem = jsonItems.getJSONObject(i);
-      } catch (JSONException e) {
-        // Do nothing.
+      for (int i = 0; i < jsonItems.length(); i++) {
+        Object newItem = shapeItemWithJson(jsonItems.optJSONObject(i), composition);
+        if (newItem != null) {
+          items.add(newItem);
+        }
       }
-      if (jsonItem == null) {
-        throw new IllegalStateException("Unable to get jsonItem");
-      }
-
-
-      Object newItem = shapeItemWithJson(jsonItem, frameRate, composition);
-      if (newItem != null) {
-        items.add(newItem);
-      }
+      return new ShapeGroup(name, items);
     }
+  }
+
+  public String getName() {
+    return name;
   }
 
   List<Object> getItems() {
     return items;
   }
 
-  @Override
-  public String toString() {
+  @Override public String toString() {
     return "ShapeGroup{" + "name='" + name + "\' Shapes: " + Arrays.toString(items.toArray()) + '}';
   }
 }

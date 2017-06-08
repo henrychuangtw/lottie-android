@@ -1,10 +1,9 @@
 package com.airbnb.lottie;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 class Mask {
-  private enum MaskMode {
+  enum MaskMode {
     MaskModeAdd,
     MaskModeSubtract,
     MaskModeIntersect,
@@ -14,14 +13,18 @@ class Mask {
   private final MaskMode maskMode;
   private final AnimatableShapeValue maskPath;
 
-  Mask(JSONObject json, int frameRate, LottieComposition composition) {
-    try {
-      boolean closed = false;
-      if (json.has("cl")) {
-        closed = json.getBoolean("cl");
-      }
-      String mode = json.getString("mode");
-      switch (mode) {
+  private Mask(MaskMode maskMode, AnimatableShapeValue maskPath) {
+    this.maskMode = maskMode;
+    this.maskPath = maskPath;
+  }
+
+  static class Factory {
+    private Factory() {
+    }
+
+    static Mask newMask(JSONObject json, LottieComposition composition) {
+      MaskMode maskMode;
+      switch (json.optString("mode")) {
         case "a":
           maskMode = MaskMode.MaskModeAdd;
           break;
@@ -35,18 +38,20 @@ class Mask {
           maskMode = MaskMode.MaskModeUnknown;
       }
 
-      maskPath = new AnimatableShapeValue(json.getJSONObject("pt"), frameRate, composition, closed);
-      //noinspection unused
-      AnimatableIntegerValue opacity =
-          new AnimatableIntegerValue(json.getJSONObject("o"), frameRate, composition, false, true);
-      // TODO: use this.
-    } catch (JSONException e) {
-      throw new IllegalArgumentException("Unable to parse mask. " + json, e);
+      AnimatableShapeValue maskPath = AnimatableShapeValue.Factory.newInstance(
+          json.optJSONObject("pt"), composition);
+      // TODO: use this
+      // JSONObject opacityJson = json.optJSONObject("o");
+      // if (opacityJson != null) {
+      //   AnimatableIntegerValue opacity =
+      //       new AnimatableIntegerValue(opacityJson, composition, false, true);
+      // }
+
+      return new Mask(maskMode, maskPath);
     }
   }
 
-
-  MaskMode getMaskMode() {
+  @SuppressWarnings("unused") MaskMode getMaskMode() {
     return maskMode;
   }
 

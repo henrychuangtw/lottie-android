@@ -1,58 +1,76 @@
 package com.airbnb.lottie;
 
-import android.util.Log;
+import android.graphics.Path;
+import android.support.annotation.Nullable;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 class ShapeFill {
-  private static final String TAG = ShapeFill.class.getSimpleName();
-  private boolean fillEnabled;
-  private AnimatableColorValue color;
-  private AnimatableIntegerValue opacity;
+  private final boolean fillEnabled;
+  private final Path.FillType fillType;
+  private final String name;
+  @Nullable private final AnimatableColorValue color;
+  @Nullable private final AnimatableIntegerValue opacity;
 
-  ShapeFill(JSONObject json, int frameRate, LottieComposition composition) {
-    JSONObject jsonColor = null;
-    try {
-      jsonColor = json.getJSONObject("c");
-    } catch (JSONException e) {
-      // Do nothing.
-    }
-    if (jsonColor != null) {
-      color = new AnimatableColorValue(jsonColor, frameRate, composition);
-    }
-
-    JSONObject jsonOpacity = null;
-    try {
-      jsonOpacity = json.getJSONObject("o");
-    } catch (JSONException e) {
-      // Do nothing.
-    }
-    if (jsonOpacity != null) {
-      opacity = new AnimatableIntegerValue(jsonOpacity, frameRate, composition, false, true);
-    }
-
-    try {
-      fillEnabled = json.getBoolean("fillEnabled");
-    } catch (JSONException e) {
-      // Do nothing.
-    }
-    if (L.DBG) Log.d(TAG, "Parsed new shape fill " + toString());
+  private ShapeFill(String name, boolean fillEnabled, Path.FillType fillType,
+      @Nullable AnimatableColorValue color, @Nullable AnimatableIntegerValue opacity) {
+    this.name = name;
+    this.fillEnabled = fillEnabled;
+    this.fillType = fillType;
+    this.color = color;
+    this.opacity = opacity;
   }
 
-  public AnimatableColorValue getColor() {
+  static class Factory {
+    private Factory() {
+    }
+
+    static ShapeFill newInstance(JSONObject json, LottieComposition composition) {
+      AnimatableColorValue color = null;
+      boolean fillEnabled;
+      AnimatableIntegerValue opacity = null;
+      final String name = json.optString("nm");
+
+      JSONObject jsonColor = json.optJSONObject("c");
+      if (jsonColor != null) {
+        color = AnimatableColorValue.Factory.newInstance(jsonColor, composition);
+      }
+
+      JSONObject jsonOpacity = json.optJSONObject("o");
+      if (jsonOpacity != null) {
+        opacity = AnimatableIntegerValue.Factory.newInstance(jsonOpacity, composition);
+      }
+      fillEnabled = json.optBoolean("fillEnabled");
+
+      int fillTypeInt = json.optInt("r", 1);
+      Path.FillType fillType = fillTypeInt == 1 ? Path.FillType.WINDING : Path.FillType.EVEN_ODD;
+
+      return new ShapeFill(name, fillEnabled, fillType, color, opacity);
+    }
+  }
+
+  String getName() {
+    return name;
+  }
+
+  @Nullable AnimatableColorValue getColor() {
     return color;
   }
 
-  public AnimatableIntegerValue getOpacity() {
+  @Nullable AnimatableIntegerValue getOpacity() {
     return opacity;
+  }
+
+  Path.FillType getFillType() {
+    return fillType;
   }
 
   @Override
   public String toString() {
-    return "ShapeFill{" + "color=" + Integer.toHexString(color.getInitialValue()) +
+    return "ShapeFill{" + "color=" +
+        (color == null ? "null" :  Integer.toHexString(color.getInitialValue())) +
         ", fillEnabled=" + fillEnabled +
-        ", opacity=" + opacity.getInitialValue() +
+        ", opacity=" + (opacity == null ? "null" : opacity.getInitialValue()) +
         '}';
   }
 }

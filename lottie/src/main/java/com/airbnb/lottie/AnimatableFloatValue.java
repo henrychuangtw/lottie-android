@@ -1,53 +1,65 @@
 package com.airbnb.lottie;
 
-import org.json.JSONArray;
-import org.json.JSONException;
+import android.util.Log;
+
 import org.json.JSONObject;
 
+import java.util.List;
+
 class AnimatableFloatValue extends BaseAnimatableValue<Float, Float> {
-  AnimatableFloatValue(LottieComposition composition, Float initialValue) {
-    super(composition);
-    this.initialValue = initialValue;
+  private AnimatableFloatValue() {
+    super(0f);
   }
 
-  AnimatableFloatValue(JSONObject json, int frameRate, LottieComposition composition) {
-    this(json, frameRate, composition, true);
+  private AnimatableFloatValue(List<Keyframe<Float>> keyframes, Float initialValue) {
+    super(keyframes, initialValue);
   }
 
-  AnimatableFloatValue(JSONObject json, int frameRate, LottieComposition composition,
-      boolean isDp) {
-    super(json, frameRate, composition, isDp);
-  }
-
-  @Override
-  protected Float valueFromObject(Object object, float scale) throws JSONException {
-    if (object instanceof JSONArray) {
-      object = ((JSONArray) object).get(0);
-    }
-    if (object instanceof Float) {
-      return (Float) object * scale;
-    } else if (object instanceof Double) {
-      return (float) ((Double) object * scale);
-    } else if (object instanceof Integer) {
-      return (Integer) object * scale;
-    }
-    return null;
-  }
-
-  @Override
-  public KeyframeAnimation<Float> createAnimation() {
+  @Override public KeyframeAnimation<Float> createAnimation() {
     if (!hasAnimation()) {
       return new StaticKeyframeAnimation<>(initialValue);
     }
 
-    KeyframeAnimation<Float> animation =
-        new NumberKeyframeAnimation<>(duration, composition, keyTimes, Float.class, keyValues,
-            interpolators);
-    animation.setStartDelay(delay);
-    return animation;
+    return new FloatKeyframeAnimation(keyframes);
   }
 
   public Float getInitialValue() {
     return initialValue;
+  }
+
+  private static class ValueFactory implements AnimatableValue.Factory<Float> {
+    static final ValueFactory INSTANCE = new ValueFactory();
+
+    private ValueFactory() {
+    }
+
+    @Override public Float valueFromObject(Object object, float scale) {
+      return JsonUtils.valueFromObject(object) * scale;
+    }
+  }
+
+  static final class Factory {
+    private Factory() {
+    }
+
+    static AnimatableFloatValue newInstance() {
+      return new AnimatableFloatValue();
+    }
+
+    static AnimatableFloatValue newInstance(JSONObject json, LottieComposition composition) {
+      return newInstance(json, composition, true);
+    }
+
+    static AnimatableFloatValue newInstance(JSONObject json, LottieComposition composition,
+        boolean isDp) {
+      float scale = isDp ? composition.getDpScale() : 1f;
+      if (json.has("x")) {
+        Log.w(L.TAG, "Animation has expressions which are not supported.");
+      }
+      AnimatableValueParser.Result<Float> result = AnimatableValueParser
+          .newInstance(json, scale, composition, ValueFactory.INSTANCE)
+          .parseJson();
+      return new AnimatableFloatValue(result.keyframes, result.initialValue);
+    }
   }
 }

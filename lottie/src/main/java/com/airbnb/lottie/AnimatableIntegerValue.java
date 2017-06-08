@@ -1,33 +1,18 @@
 package com.airbnb.lottie;
 
-import org.json.JSONArray;
-import org.json.JSONException;
+import android.util.Log;
+
 import org.json.JSONObject;
 
+import java.util.List;
+
 class AnimatableIntegerValue extends BaseAnimatableValue<Integer, Integer> {
-  AnimatableIntegerValue(LottieComposition composition, Integer initialValue) {
-    super(composition);
-    this.initialValue = initialValue;
+  private AnimatableIntegerValue() {
+    super(100);
   }
 
-  AnimatableIntegerValue(JSONObject json, int frameRate, LottieComposition composition,
-      boolean isDp, boolean remap100To255) {
-    super(json, frameRate, composition, isDp);
-    if (remap100To255) {
-      initialValue = initialValue * 255 / 100;
-      for (int i = 0; i < keyValues.size(); i++) {
-        keyValues.set(i, keyValues.get(i) * 255 / 100);
-      }
-    }
-  }
-
-  @Override protected Integer valueFromObject(Object object, float scale) throws JSONException {
-    if (object instanceof Integer) {
-      return Math.round((Integer) object * scale);
-    } else if (object instanceof JSONArray && ((JSONArray) object).get(0) instanceof Integer) {
-      return Math.round(((JSONArray) object).getInt(0) * scale);
-    }
-    return null;
+  AnimatableIntegerValue(List<Keyframe<Integer>> keyframes, Integer initialValue) {
+    super(keyframes, initialValue);
   }
 
   @Override public KeyframeAnimation<Integer> createAnimation() {
@@ -35,14 +20,42 @@ class AnimatableIntegerValue extends BaseAnimatableValue<Integer, Integer> {
       return new StaticKeyframeAnimation<>(initialValue);
     }
 
-    KeyframeAnimation<Integer> animation =
-        new NumberKeyframeAnimation<>(duration, composition, keyTimes, Integer.class, keyValues,
-            interpolators);
-    animation.setStartDelay(delay);
-    return animation;
+    return new IntegerKeyframeAnimation(keyframes);
   }
 
   public Integer getInitialValue() {
     return initialValue;
+  }
+
+  static final class Factory {
+    private Factory() {
+    }
+
+    static AnimatableIntegerValue newInstance() {
+      return new AnimatableIntegerValue();
+    }
+
+    static AnimatableIntegerValue newInstance(
+        JSONObject json, LottieComposition composition) {
+      if (json.has("x")) {
+        Log.w(L.TAG, "Animation has expressions which are not supported.");
+      }
+      AnimatableValueParser.Result<Integer> result = AnimatableValueParser
+          .newInstance(json, 1, composition, ValueFactory.INSTANCE)
+          .parseJson();
+      Integer initialValue = result.initialValue;
+      return new AnimatableIntegerValue(result.keyframes, initialValue);
+    }
+  }
+
+  private static class ValueFactory implements AnimatableValue.Factory<Integer> {
+    private static final ValueFactory INSTANCE = new ValueFactory();
+
+    private ValueFactory() {
+    }
+
+    @Override public Integer valueFromObject(Object object, float scale) {
+      return Math.round(JsonUtils.valueFromObject(object) * scale);
+    }
   }
 }
